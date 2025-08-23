@@ -3,11 +3,6 @@
 #include "../model/client_model.hpp"
 #include "../view/client_view.hpp"
 
-struct PackedClientListEntry {
-  uint8_t id[ProtocolMessage::CLIENT_ID_SIZE];
-  char name[ProtocolMessage::CLIENT_NAME_SIZE];
-} __attribute__((packed));
-
 class ClientController {
  public:
   ClientController(std::unique_ptr<ClientModel> model,

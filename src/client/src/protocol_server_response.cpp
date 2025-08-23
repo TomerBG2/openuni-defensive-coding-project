@@ -23,13 +23,6 @@ ProtocolServerResponse ProtocolServerResponse::from_bytes(
 }
 
 std::vector<ClientListEntry> ProtocolServerResponse::parse_client_list() const {
-  struct PackedClientListEntry {
-    uint8_t id[UUID_SIZE];
-    char name[ProtocolMessage::CLIENT_NAME_SIZE];
-  };
-  static_assert(sizeof(PackedClientListEntry) ==
-                    UUID_SIZE + ProtocolMessage::CLIENT_NAME_SIZE,
-                "PackedClientListEntry size mismatch");
   std::vector<ClientListEntry> client_list;
   size_t entry_size = sizeof(PackedClientListEntry);
   size_t count = m_payload.size() / entry_size;

@@ -4,6 +4,11 @@
 #include <vector>
 #include "tcp_client.hpp"
 
+struct PackedClientListEntry {
+  uint8_t id[ProtocolMessage::CLIENT_ID_SIZE];
+  char name[ProtocolMessage::CLIENT_NAME_SIZE];
+} __attribute__((packed));
+
 struct ProtocolResponseHeader {
   uint8_t version;
   uint16_t code;
