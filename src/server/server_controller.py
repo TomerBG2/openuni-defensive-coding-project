@@ -1,7 +1,7 @@
 
 import struct
 import os
-from server_model import Client, ServerModel
+from server_model import Client, ServerModel, Message
 from server_view import ServerView
 from protocol_constants import UUID_SIZE, PUBLIC_KEY_SIZE, CLIENT_NAME_SIZE, PACKED_CLIENT_ENTRY_SIZE, REGISTER_REPLY_SIZE, RESPONSE_HEADER_SIZE, Code
 
@@ -105,6 +105,36 @@ class ServerController:
                     resp = resp_header + resp_payload
                     self.view.log(
                         f"Sending public key response for client {client.client_id.hex()}")
+                    conn.sendall(resp)
+                elif code == Code.SEND_MESSAGE_REQUEST:
+                    # Payload struct: dst_id (16s), msg_type (B), content_size (I), content (content_size)s
+                    MSG_HEADER_FORMAT = f'!{UUID_SIZE}sBI'
+                    MSG_HEADER_SIZE = struct.calcsize(MSG_HEADER_FORMAT)
+                    if payload_size < MSG_HEADER_SIZE:
+                        self.view.log("Invalid send message payload size")
+                        conn.sendall(ERROR_RESPONSE_BYTES)
+                        return
+                    dst_id, msg_type, content_size = struct.unpack(
+                        MSG_HEADER_FORMAT, payload[:MSG_HEADER_SIZE])
+                    content = payload[MSG_HEADER_SIZE:MSG_HEADER_SIZE+content_size]
+                    # Save message in model
+                    msg = Message(
+                        msg_id=0,  # will be set by add_message
+                        to_client=dst_id,
+                        from_client=client_id,
+                        msg_type=msg_type,
+                        content=content
+                    )
+                    self.model.add_message(msg)
+                    # Build response struct: version (B), code (H), payload_size (I), dst_id (16s), msg_id (I)
+                    REPLY_FORMAT = f'!BHI{UUID_SIZE}sI'
+                    reply_payload = struct.pack(
+                        f'!{UUID_SIZE}sI', dst_id, msg.msg_id)
+                    reply_header = struct.pack(
+                        '!BHI', 1, Code.SEND_MESSAGE_REPLY, struct.calcsize(f'!{UUID_SIZE}sI'))
+                    resp = reply_header + reply_payload
+                    self.view.log(
+                        f"Send message: saved msg_id={msg.msg_id} for dst={dst_id.hex()}")
                     conn.sendall(resp)
                 else:
                     # Unknown command, send error code with empty payload

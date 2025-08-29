@@ -4,58 +4,55 @@
 #include <cryptopp/rsa.h>
 
 #include <string>
+using std::byte;
 
+class RSAPublicWrapper {
+ public:
+  static const unsigned int KEYSIZE = 160;
+  static const unsigned int BITS = 1024;
 
+ private:
+  CryptoPP::AutoSeededRandomPool _rng;
+  CryptoPP::RSA::PublicKey _publicKey;
 
-class RSAPublicWrapper
-{
-public:
-	static const unsigned int KEYSIZE = 160;
-	static const unsigned int BITS = 1024;
+  RSAPublicWrapper(const RSAPublicWrapper& rsapublic);
+  RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic);
 
-private:
-	CryptoPP::AutoSeededRandomPool _rng;
-	CryptoPP::RSA::PublicKey _publicKey;
+ public:
+  RSAPublicWrapper(const char* key, unsigned int length);
+  RSAPublicWrapper(const std::string& key);
+  ~RSAPublicWrapper();
 
-	RSAPublicWrapper(const RSAPublicWrapper& rsapublic);
-	RSAPublicWrapper& operator=(const RSAPublicWrapper& rsapublic);
-public:
+  std::string getPublicKey() const;
+  char* getPublicKey(char* keyout, unsigned int length) const;
 
-	RSAPublicWrapper(const char* key, unsigned int length);
-	RSAPublicWrapper(const std::string& key);
-	~RSAPublicWrapper();
-
-	std::string getPublicKey() const;
-	char* getPublicKey(char* keyout, unsigned int length) const;
-
-	std::string encrypt(const std::string& plain);
-	std::string encrypt(const char* plain, unsigned int length);
+  std::string encrypt(const std::string& plain);
+  std::string encrypt(const char* plain, unsigned int length);
 };
 
+class RSAPrivateWrapper {
+ public:
+  static const unsigned int BITS = 1024;
 
-class RSAPrivateWrapper
-{
-public:
-	static const unsigned int BITS = 1024;
+ private:
+  CryptoPP::AutoSeededRandomPool _rng;
+  CryptoPP::RSA::PrivateKey _privateKey;
 
-private:
-	CryptoPP::AutoSeededRandomPool _rng;
-	CryptoPP::RSA::PrivateKey _privateKey;
+  RSAPrivateWrapper(const RSAPrivateWrapper& rsaprivate);
+  RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate);
 
-	RSAPrivateWrapper(const RSAPrivateWrapper& rsaprivate);
-	RSAPrivateWrapper& operator=(const RSAPrivateWrapper& rsaprivate);
-public:
-	RSAPrivateWrapper();
-	RSAPrivateWrapper(const char* key, unsigned int length);
-	RSAPrivateWrapper(const std::string& key);
-	~RSAPrivateWrapper();
+ public:
+  RSAPrivateWrapper();
+  RSAPrivateWrapper(const char* key, unsigned int length);
+  RSAPrivateWrapper(const std::string& key);
+  ~RSAPrivateWrapper();
 
-	std::string getPrivateKey() const;
-	char* getPrivateKey(char* keyout, unsigned int length) const;
+  std::string getPrivateKey() const;
+  char* getPrivateKey(char* keyout, unsigned int length) const;
 
-	std::string getPublicKey() const;
-	char* getPublicKey(char* keyout, unsigned int length) const;
+  std::string getPublicKey() const;
+  char* getPublicKey(char* keyout, unsigned int length) const;
 
-	std::string decrypt(const std::string& cipher);
-	std::string decrypt(const char* cipher, unsigned int length);
+  std::string decrypt(const std::string& cipher);
+  std::string decrypt(const char* cipher, unsigned int length);
 };

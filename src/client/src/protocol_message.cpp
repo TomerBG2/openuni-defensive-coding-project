@@ -81,10 +81,11 @@ ProtocolMessage ProtocolMessage::create_public_key_request(
   return ProtocolMessage(header, payload);
 }
 
-ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
+ProtocolMessage ProtocolMessage::create_send_message_request(
     const std::array<uint8_t, UUID_SIZE>& my_id,
     const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
-    const std::array<uint8_t, SYM_KEY_SIZE>& sym_key) {
+    MessageType msg_type,
+    const std::vector<uint8_t>& content) {
   ProtocolRequestHeader header{};
   header.client_id = my_id;
   header.version = 1;
@@ -94,18 +95,17 @@ ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
   // Append destination client ID
   payload.insert(payload.end(), dst_id.begin(), dst_id.end());
   // Append message type
-  payload.push_back(static_cast<uint8_t>(MessageType::SEND_SYM_KEY));
+  payload.push_back(static_cast<uint8_t>(msg_type));
   // Append content size (4 bytes, network order)
-  uint32_t content_size = ProtocolMessage::SYM_KEY_SIZE;
+  uint32_t content_size = content.size();
   uint32_t content_size_n = htonl(content_size);
   uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
   payload.insert(payload.end(), size_ptr, size_ptr + 4);
-  // Append symmetric key content
-  payload.insert(payload.end(), sym_key.begin(), sym_key.end());
+  // Append content
+  payload.insert(payload.end(), content.begin(), content.end());
 
   header.payload_size = payload.size();
   return ProtocolMessage(header, payload);
-}
 }
 
 ProtocolMessage ProtocolMessage::create_symmetric_key_request(
