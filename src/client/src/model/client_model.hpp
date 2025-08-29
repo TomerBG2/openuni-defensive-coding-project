@@ -48,6 +48,13 @@ class ClientModel {
   std::array<uint8_t, sizeof(ProtocolRequestHeader::client_id)> load_my_id()
       const;
 
+  // Returns the symmetric key (SYM_KEY_SIZE bytes, currently all zeros)
+  std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> get_symmetric_key() const {
+    std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> key{};
+    key.fill(0);
+    return key;
+  }
+
  private:
   std::string m_ip;
   std::string m_port;

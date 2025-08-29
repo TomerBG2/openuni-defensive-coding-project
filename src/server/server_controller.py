@@ -10,6 +10,8 @@ HEADER_SIZE = struct.calcsize(HEADER_FORMAT)
 REGISTER_PAYLOAD_FORMAT = f'!{CLIENT_NAME_SIZE}s{PUBLIC_KEY_SIZE}s'
 REGISTER_PAYLOAD_SIZE = struct.calcsize(REGISTER_PAYLOAD_FORMAT)
 
+ERROR_RESPONSE_BYTES = struct.pack('!BHI', 1, Code.ERROR, 0)
+
 
 class ServerController:
     def __init__(self, model: ServerModel, view: ServerView):
@@ -17,9 +19,9 @@ class ServerController:
         self.view = view
 
     def handle_client(self, conn):
+        self.view.log("Handling new client connection")
         while True:
             try:
-                self.view.log("Handling new client connection")
                 header_bytes = conn.recv(HEADER_SIZE)
                 if not header_bytes or len(header_bytes) < HEADER_SIZE:
                     self.view.log(
@@ -88,15 +90,13 @@ class ServerController:
                     if payload_size != UUID_SIZE:
                         self.view.log(
                             "Invalid public key request payload size")
-                        resp_header = struct.pack('!BHI', 1, Code.ERROR, 0)
-                        conn.sendall(resp_header)
+                        conn.sendall(ERROR_RESPONSE_BYTES)
                         return
                     requested_id = payload
                     client = self.model.get_client(requested_id)
                     if client is None:
                         self.view.log("Requested client not found")
-                        resp_header = struct.pack('!BHI', 1, Code.ERROR, 0)
-                        conn.sendall(resp_header)
+                        conn.sendall(ERROR_RESPONSE_BYTES)
                         return
                     # Build response: 1 byte version, 2 bytes code (2102), 4 bytes payload_size (UUID_SIZE+PUBLIC_KEY_SIZE), UUID_SIZE bytes id, PUBLIC_KEY_SIZE bytes pubkey
                     resp_payload = client.client_id + client.public_key
@@ -108,10 +108,9 @@ class ServerController:
                     conn.sendall(resp)
                 else:
                     # Unknown command, send error code with empty payload
-                    resp_header = struct.pack('!BHI', 1, Code.ERROR, 0)
                     self.view.log("Sending error response: " +
-                                  resp_header.hex())
-                    conn.sendall(resp_header)
+                                  ERROR_RESPONSE_BYTES.hex())
+                    conn.sendall(ERROR_RESPONSE_BYTES)
             except Exception as e:
                 self.view.log(f"Exception: {e}")
                 conn.close()

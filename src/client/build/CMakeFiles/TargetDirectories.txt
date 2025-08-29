@@ -1,3 +1,0 @@
-/home/tomer/dev/uni_course/tmd/15/src/client/build/CMakeFiles/tcp_client.dir
-/home/tomer/dev/uni_course/tmd/15/src/client/build/CMakeFiles/edit_cache.dir
-/home/tomer/dev/uni_course/tmd/15/src/client/build/CMakeFiles/rebuild_cache.dir

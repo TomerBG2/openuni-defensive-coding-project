@@ -1,5 +1,3 @@
-
-
 #include "protocol_message.hpp"
 #include <arpa/inet.h>
 #include <cstring>
@@ -80,5 +78,81 @@ ProtocolMessage ProtocolMessage::create_public_key_request(
   header.code = REQUEST_CODES::PUBLIC_KEY_REQUEST;
   header.payload_size = CLIENT_ID_SIZE;
   std::vector<uint8_t> payload(target_id.begin(), target_id.end());
+  return ProtocolMessage(header, payload);
+}
+
+ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
+    const std::array<uint8_t, UUID_SIZE>& my_id,
+    const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
+    const std::array<uint8_t, SYM_KEY_SIZE>& sym_key) {
+  ProtocolRequestHeader header{};
+  header.client_id = my_id;
+  header.version = 1;
+  header.code = REQUEST_CODES::SEND_MESSAGE;
+
+  std::vector<uint8_t> payload;
+  // Append destination client ID
+  payload.insert(payload.end(), dst_id.begin(), dst_id.end());
+  // Append message type
+  payload.push_back(static_cast<uint8_t>(MessageType::SEND_SYM_KEY));
+  // Append content size (4 bytes, network order)
+  uint32_t content_size = ProtocolMessage::SYM_KEY_SIZE;
+  uint32_t content_size_n = htonl(content_size);
+  uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
+  payload.insert(payload.end(), size_ptr, size_ptr + 4);
+  // Append symmetric key content
+  payload.insert(payload.end(), sym_key.begin(), sym_key.end());
+
+  header.payload_size = payload.size();
+  return ProtocolMessage(header, payload);
+}
+}
+
+ProtocolMessage ProtocolMessage::create_symmetric_key_request(
+    const std::array<uint8_t, UUID_SIZE>& my_id,
+    const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id) {
+  ProtocolRequestHeader header{};
+  header.client_id = my_id;
+  header.version = 1;
+  header.code = REQUEST_CODES::SEND_MESSAGE;
+
+  std::vector<uint8_t> payload;
+  // Append destination client ID
+  payload.insert(payload.end(), dst_id.begin(), dst_id.end());
+  // Append message type
+  payload.push_back(static_cast<uint8_t>(MessageType::SYMMETRIC_KEY_REQUEST));
+  // Append content size (4 bytes, network order) - zero
+  uint32_t content_size_n = 0;
+  uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
+  payload.insert(payload.end(), size_ptr, size_ptr + 4);
+  // No content
+
+  header.payload_size = payload.size();
+  return ProtocolMessage(header, payload);
+}
+
+ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
+    const std::array<uint8_t, UUID_SIZE>& my_id,
+    const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
+    const std::array<uint8_t, SYM_KEY_SIZE>& sym_key) {
+  ProtocolRequestHeader header{};
+  header.client_id = my_id;
+  header.version = 1;
+  header.code = REQUEST_CODES::SEND_MESSAGE;
+
+  std::vector<uint8_t> payload;
+  // Append destination client ID
+  payload.insert(payload.end(), dst_id.begin(), dst_id.end());
+  // Append message type
+  payload.push_back(static_cast<uint8_t>(MessageType::SYMMETRIC_KEY_SEND));
+  // Append content size (4 bytes, network order)
+  uint32_t content_size = SYM_KEY_SIZE;
+  uint32_t content_size_n = htonl(content_size);
+  uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
+  payload.insert(payload.end(), size_ptr, size_ptr + 4);
+  // Append symmetric key content
+  payload.insert(payload.end(), sym_key.begin(), sym_key.end());
+
+  header.payload_size = payload.size();
   return ProtocolMessage(header, payload);
 }

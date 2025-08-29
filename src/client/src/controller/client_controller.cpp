@@ -101,6 +101,81 @@ void ClientController::run() {
 
           break;
         }
+        case ClientCommand::SendText: {
+          // Prompt for recipient username
+          m_view->show_message("Enter recipient client name: ");
+          std::string target_name;
+          std::getline(std::cin, target_name);
+          const ClientListEntry* client_entry =
+              m_model->get_client_by_name(target_name);
+          if (!client_entry) {
+            m_view->show_error(
+                "Client name not found in client list. Please refresh the "
+                "client list first.");
+            break;
+          }
+          const auto& dst_id = client_entry->id;
+          // Prompt for message content
+          m_view->show_message("Enter message text: ");
+          std::string message_text;
+          std::getline(std::cin, message_text);
+          std::vector<uint8_t> content(message_text.begin(),
+                                       message_text.end());
+          // Build and send request using protocol API
+          auto msg = ProtocolMessage::create_send_message_request(
+              m_model->load_my_id(), dst_id, ProtocolMessage::MessageType::TEXT,
+              content);
+          client.send(msg.to_bytes());
+          m_view->show_message("Text message sent.");
+          break;
+        }
+
+        case ClientCommand::RequestSymKey: {
+          // Prompt for recipient username
+          m_view->show_message("Enter recipient client name: ");
+          std::string target_name;
+          std::getline(std::cin, target_name);
+          const ClientListEntry* client_entry =
+              m_model->get_client_by_name(target_name);
+          if (!client_entry) {
+            m_view->show_error(
+                "Client name not found in client list. Please refresh the "
+                "client list first.");
+            break;
+          }
+          const auto& dst_id = client_entry->id;
+          // Build and send request using protocol API (no content)
+          auto msg = ProtocolMessage::create_symmetric_key_request(
+              m_model->load_my_id(), dst_id);
+          client.send(msg.to_bytes());
+          m_view->show_message("Symmetric key request sent.");
+          break;
+        }
+
+        case ClientCommand::SendSymKey: {
+          // Prompt for recipient username
+          m_view->show_message("Enter recipient client name: ");
+          std::string target_name;
+          std::getline(std::cin, target_name);
+          const ClientListEntry* client_entry =
+              m_model->get_client_by_name(target_name);
+          if (!client_entry) {
+            m_view->show_error(
+                "Client name not found in client list. Please refresh the "
+                "client list first.");
+            break;
+          }
+          const auto& dst_id = client_entry->id;
+          // Get symmetric key from model
+          auto sym_key = m_model->get_symmetric_key();
+          // Build and send request using protocol API
+          auto msg = ProtocolMessage::create_send_sym_key_message_request(
+              m_model->load_my_id(), dst_id, sym_key);
+          client.send(msg.to_bytes());
+          m_view->show_message("Symmetric key sent.");
+          break;
+        }
+
         case ClientCommand::Exit:
           return;
         case ClientCommand::Invalid:
