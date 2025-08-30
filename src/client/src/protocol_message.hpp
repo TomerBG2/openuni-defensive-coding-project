@@ -15,7 +15,7 @@ struct ProtocolRequestHeader {
 
 class ProtocolMessage {
  public:
-  static constexpr size_t SYM_KEY_SIZE = 16; // 128 bits
+  static constexpr size_t SYM_KEY_SIZE = 16;  // 128 bits
   enum class MessageType : uint8_t {
     SYMMETRIC_KEY_REQUEST = 1,
     SYMMETRIC_KEY_SEND = 2,
@@ -60,6 +60,9 @@ class ProtocolMessage {
       const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
       const std::array<uint8_t, SYM_KEY_SIZE>& sym_key);
 
+  static ProtocolMessage create_pending_messages_request(
+      const std::array<uint8_t, UUID_SIZE>& my_id);
+
   const ProtocolRequestHeader& header() const { return m_header; }
   const std::vector<uint8_t>& payload() const { return m_payload; }
 
@@ -73,4 +76,5 @@ enum REQUEST_CODES {
   CLIENT_LIST = 601,
   PUBLIC_KEY_REQUEST = 602,
   SEND_MESSAGE = 603,
+  PENDING_MESSAGE_REQUEST = 604,
 };

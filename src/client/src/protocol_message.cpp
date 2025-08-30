@@ -156,3 +156,17 @@ ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
   header.payload_size = payload.size();
   return ProtocolMessage(header, payload);
 }
+
+ProtocolMessage ProtocolMessage::create_pending_messages_request(
+    const std::array<uint8_t, UUID_SIZE>& my_id) {
+  ProtocolRequestHeader header{};
+  header.client_id = my_id;
+  header.version = 1;
+  header.code = REQUEST_CODES::PENDING_MESSAGE_REQUEST;
+  header.payload_size = 0;
+
+  // No payload for pending messages request
+  std::vector<uint8_t> payload;
+
+  return ProtocolMessage(header, payload);
+}

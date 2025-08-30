@@ -45,7 +45,8 @@ class ProtocolServerResponse {
 enum RESPONSE_CODES {
   REGISTER_REPLY = 2100,
   LIST_CLIENTS_REPLY = 2101,
-  PUBLIC_KEY_REPLY = 2102
+  PUBLIC_KEY_REPLY = 2102,
+  PENDING_MESSAGES_REPLY = 2104
 };
 
 // Utility: receive and parse a ProtocolServerResponse from a TcpClient

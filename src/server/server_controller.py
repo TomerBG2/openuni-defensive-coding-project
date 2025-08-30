@@ -106,6 +106,22 @@ class ServerController:
                     self.view.log(
                         f"Sending public key response for client {client.client_id.hex()}")
                     conn.sendall(resp)
+                elif code == Code.PENDING_MESSAGE_REQUEST:
+                    # Gather all pending messages for this client
+                    pending = self.model.get_messages_for(client_id)
+                    payload = b''
+                    for msg in pending:
+                        # client id (16s), message id (I), message type (B), message size (I), content
+                        part = struct.pack(
+                            f'!{UUID_SIZE}sIBI', msg.from_client, msg.msg_id, msg.msg_type, len(msg.content))
+                        part += msg.content
+                        payload += part
+                    resp_header = struct.pack(
+                        '!BHI', 1, Code.PENDING_MESSAGE_REPLY, len(payload))
+                    resp = resp_header + payload
+                    self.view.log(
+                        f"Sending {len(pending)} pending messages, total payload size={len(payload)}")
+                    conn.sendall(resp)
                 elif code == Code.SEND_MESSAGE_REQUEST:
                     # Payload struct: dst_id (16s), msg_type (B), content_size (I), content (content_size)s
                     MSG_HEADER_FORMAT = f'!{UUID_SIZE}sBI'

@@ -1,3 +1,4 @@
+
 #include "client_controller.hpp"
 #include <array>
 #include <cstring>
@@ -173,6 +174,72 @@ void ClientController::run() {
               m_model->load_my_id(), dst_id, sym_key);
           client.send(msg.to_bytes());
           m_view->show_message("Symmetric key sent.");
+          break;
+        }
+
+        case ClientCommand::WaitingMessages: {
+          // Send pending message request using protocol API
+          auto msg = ProtocolMessage::create_pending_messages_request(
+              m_model->load_my_id());
+          client.send(msg.to_bytes());
+          ProtocolServerResponse server_msg = recv_protocol_response(client);
+
+          // Parse all messages from payload
+          const auto& payload = server_msg.payload();
+          size_t offset = 0;
+          // Each message has: [CLIENT_ID][MSG_ID][MSG_TYPE][MSG_SIZE][CONTENT]
+          const size_t MSG_ID_SIZE = 4;    // uint32_t
+          const size_t MSG_TYPE_SIZE = 1;  // uint8_t
+          const size_t MSG_SIZE_SIZE = 4;  // uint32_t
+          const size_t MSG_HEADER_SIZE = ProtocolMessage::CLIENT_ID_SIZE +
+                                         MSG_ID_SIZE + MSG_TYPE_SIZE +
+                                         MSG_SIZE_SIZE;
+
+          while (offset + MSG_HEADER_SIZE <= payload.size()) {
+            // Parse header
+            std::array<uint8_t, ProtocolMessage::CLIENT_ID_SIZE> from_id;
+            std::memcpy(from_id.data(), payload.data() + offset,
+                        ProtocolMessage::CLIENT_ID_SIZE);
+            offset += ProtocolMessage::CLIENT_ID_SIZE;
+
+            uint32_t msg_id = ntohl(
+                *reinterpret_cast<const uint32_t*>(payload.data() + offset));
+            offset += MSG_ID_SIZE;
+
+            uint8_t msg_type = payload[offset++];  // Already only 1 byte
+
+            uint32_t msg_size = ntohl(
+                *reinterpret_cast<const uint32_t*>(payload.data() + offset));
+            offset += MSG_SIZE_SIZE;
+
+            // Validate message size
+            if (offset + msg_size > payload.size())
+              break;
+
+            // Extract message content
+            std::vector<uint8_t> content(payload.begin() + offset,
+                                         payload.begin() + offset + msg_size);
+            offset += msg_size;
+
+            // Find sender name
+            const ClientListEntry* sender = m_model->get_client_by_id(from_id);
+            std::string sender_name = sender ? sender->name : "<unknown>";
+            bool has_key = sender && !sender->public_key.empty();
+
+            // Handle message based on type
+            if (msg_type ==
+                static_cast<uint8_t>(
+                    ProtocolMessage::MessageType::SYMMETRIC_KEY_SEND)) {
+              if (content.size() == ProtocolMessage::SYM_KEY_SIZE) {
+                m_model->update_client_public_key(
+                    from_id, content);  // reuse as key storage
+              }
+            }
+
+            // Display message using view helper
+            m_view->show_pending_message(sender_name, msg_type, content,
+                                         has_key);
+          }
           break;
         }
 

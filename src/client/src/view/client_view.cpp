@@ -89,3 +89,31 @@ void ClientView::show_all_clients(
     std::cout << "(No clients in list)" << std::endl;
   }
 }
+
+void ClientView::show_pending_message(const std::string& sender_name,
+                                      uint8_t msg_type,
+                                      const std::vector<uint8_t>& content,
+                                      bool has_key) const {
+  std::cout << "From: " << sender_name << std::endl;
+  std::cout << "Content:" << std::endl;
+  switch (msg_type) {
+    case 1:  // SYMMETRIC_KEY_REQUEST
+      std::cout << "Request for symmertic key" << std::endl;
+      break;
+    case 2:  // SYMMETRIC_KEY_SEND
+      std::cout << "Recieved symmertic key" << std::endl;
+      break;
+    case 3:  // TEXT
+      if (!has_key) {
+        std::cout << "cant decrypt message" << std::endl;
+      } else {
+        std::string text(content.begin(), content.end());
+        std::cout << text << std::endl;
+      }
+      break;
+    default:
+      std::cout << "Unknown message type" << std::endl;
+      break;
+  }
+  std::cout << std::endl;
+}
