@@ -21,18 +21,23 @@ std::unique_ptr<ClientModel> ClientModel::create_from_file(
 }
 
 ClientModel::ClientModel(const std::string& ip, const std::string& port)
-    : m_ip(ip), m_port(port) {}
+    : m_ip(ip), m_port(port), m_symmetric_key{}, m_has_valid_key(false) {}
 
 ClientModel::~ClientModel() = default;
 
 // Rule of 5
 ClientModel::ClientModel(const ClientModel& other)
-    : m_ip(other.m_ip), m_port(other.m_port) {}
+    : m_ip(other.m_ip),
+      m_port(other.m_port),
+      m_symmetric_key(other.m_symmetric_key),
+      m_has_valid_key(other.m_has_valid_key) {}
 
 ClientModel& ClientModel::operator=(const ClientModel& other) {
   if (this != &other) {
     m_ip = other.m_ip;
     m_port = other.m_port;
+    m_symmetric_key = other.m_symmetric_key;
+    m_has_valid_key = other.m_has_valid_key;
   }
   return *this;
 }

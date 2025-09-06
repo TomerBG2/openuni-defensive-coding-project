@@ -50,13 +50,23 @@ class ClientModel {
 
   // Returns the symmetric key (SYM_KEY_SIZE bytes, currently all zeros)
   std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> get_symmetric_key() const {
-    std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> key{};
-    key.fill(0);
-    return key;
+    return m_symmetric_key;
   }
+
+  void set_symmetric_key(
+      const std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE>& key) {
+    m_symmetric_key = key;
+    // Check if key contains any non-zero values
+    m_has_valid_key = true;
+  }
+
+  // Check if we have a valid symmetric key
+  bool has_valid_symmetric_key() const { return m_has_valid_key; }
 
  private:
   std::string m_ip;
   std::string m_port;
   std::vector<ClientListEntry> m_client_list;
+  std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> m_symmetric_key{};
+  bool m_has_valid_key = false;
 };
