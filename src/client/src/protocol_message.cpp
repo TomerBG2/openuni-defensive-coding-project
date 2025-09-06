@@ -36,7 +36,7 @@ ProtocolMessage ProtocolMessage::from_bytes(const std::vector<uint8_t>& data) {
 // Helper for register request
 ProtocolMessage ProtocolMessage::create_register_request(
     const std::string& username,
-    const std::vector<uint8_t>& public_key) {
+    const std::string& public_key) {
   ProtocolRequestHeader header{};
   header.client_id.fill(0);  // UUID_SIZE bytes of 0 for registration
   header.version = 1;
@@ -47,10 +47,15 @@ ProtocolMessage ProtocolMessage::create_register_request(
   std::memcpy(
       payload.data(), username.c_str(),
       std::min<size_t>(username.size(), ProtocolMessage::CLIENT_NAME_SIZE));
-  if (public_key.size() >= ProtocolMessage::PUBLIC_KEY_SIZE) {
-    std::memcpy(payload.data() + ProtocolMessage::CLIENT_NAME_SIZE,
-                public_key.data(), ProtocolMessage::PUBLIC_KEY_SIZE);
+  if (public_key.size() != ProtocolMessage::PUBLIC_KEY_SIZE) {
+    throw std::runtime_error("Public key must be exactly " +
+                             std::to_string(ProtocolMessage::PUBLIC_KEY_SIZE) +
+                             " bytes");
   }
+
+  std::memcpy(payload.data() + ProtocolMessage::CLIENT_NAME_SIZE,
+              public_key.c_str(), ProtocolMessage::PUBLIC_KEY_SIZE);
+
   // else leave as zeros
 
   header.payload_size = payload.size();

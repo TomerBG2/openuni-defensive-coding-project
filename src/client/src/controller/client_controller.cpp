@@ -18,6 +18,9 @@ void ClientController::run() {
   TcpClient client(m_model->get_ip(), m_model->get_port());
   client.connect();
 
+  // first try to load existing user info
+  m_model->load_my_info();
+
   while (true) {
     try {
       ClientCommand cmd = m_view->prompt_command();
@@ -28,13 +31,13 @@ void ClientController::run() {
                 "me.info already exists. Registration aborted.");
           }
           std::string username = m_view->prompt_username();
+          m_model->generate_key_pair();
+          // Get the private key for storage
+          std::string private_key = m_model->get_private_key();
+          std::string private_key_base64 = Base64Wrapper::encode(private_key);
 
-          // TODO: Replace with real public key when available
-          std::vector<uint8_t> public_key(ProtocolMessage::PUBLIC_KEY_SIZE,
-                                          'a');
-
-          ProtocolMessage msg =
-              ProtocolMessage::create_register_request(username, public_key);
+          ProtocolMessage msg = ProtocolMessage::create_register_request(
+              username, m_model->get_public_key());
           auto bytes = msg.to_bytes();
           client.send(bytes);
 
@@ -48,17 +51,24 @@ void ClientController::run() {
                 std::to_string(server_msg.code()) + " payload size: " +
                 std::to_string(server_msg.payload().size()));
           }
-          std::string uuid(server_msg.payload().begin(),
-                           server_msg.payload().end());
-          m_model->save_me_info(username, uuid);
+          std::array<uint8_t, ProtocolMessage::CLIENT_ID_SIZE> uuid;
+          std::copy(server_msg.payload().begin(), server_msg.payload().end(),
+                    uuid.begin());
+          m_model->set_my_uuid(uuid);
+
+          m_model->save_me_info(username, uuid, private_key_base64);
           m_view->show_message(
-              "Registration successful. UUID saved to me.info.");
+              "Registration successful. UUID and private key saved to "
+              "me.info.");
           break;
         }
         case ClientCommand::ListClients: {
           // Build and send request using protocol API
+          m_view->show_message("sending get client with: ");
+          m_view->show_hexify(m_model->get_my_id().data(),
+                              m_model->get_my_id().size());
           auto msg = ProtocolMessage::create_list_clients_request(
-              m_model->load_my_id());
+              m_model->get_my_id());
           client.send(msg.to_bytes());
 
           // Receive and parse response in one step
@@ -87,7 +97,7 @@ void ClientController::run() {
           }
           const auto& req_id = client_entry->id;
           ProtocolMessage msg = ProtocolMessage::create_public_key_request(
-              m_model->load_my_id(), req_id);
+              m_model->get_my_id(), req_id);
           client.send(msg.to_bytes());
           ProtocolServerResponse server_msg = recv_protocol_response(client);
 
@@ -122,9 +132,12 @@ void ClientController::run() {
           std::getline(std::cin, message_text);
           std::vector<uint8_t> content(message_text.begin(),
                                        message_text.end());
+
+          // TODO: encrypt with the other side symetric key
+
           // Build and send request using protocol API
           auto msg = ProtocolMessage::create_send_message_request(
-              m_model->load_my_id(), dst_id, ProtocolMessage::MessageType::TEXT,
+              m_model->get_my_id(), dst_id, ProtocolMessage::MessageType::TEXT,
               content);
           client.send(msg.to_bytes());
 
@@ -156,14 +169,15 @@ void ClientController::run() {
           const auto& dst_id = client_entry->id;
           // Build and send request using protocol API (no content)
           auto msg = ProtocolMessage::create_symmetric_key_request(
-              m_model->load_my_id(), dst_id);
+              m_model->get_my_id(), dst_id);
           client.send(msg.to_bytes());
 
           // Receive and validate the server response
           ProtocolServerResponse server_msg = recv_protocol_response(client);
           if (server_msg.code() != RESPONSE_CODES::SEND_MESSAGE_REPLY) {
             throw std::runtime_error(
-                "Invalid server response after sending symmetric key request. "
+                "Invalid server response after sending symmetric key "
+                "request. "
                 "Code: " +
                 std::to_string(server_msg.code()));
           }
@@ -188,16 +202,19 @@ void ClientController::run() {
           const auto& dst_id = client_entry->id;
           // Get symmetric key from model
           auto sym_key = m_model->get_symmetric_key();
+          // TODO: encrypt the symmetric key with the recipient's public key
+
           // Build and send request using protocol API
           auto msg = ProtocolMessage::create_send_sym_key_message_request(
-              m_model->load_my_id(), dst_id, sym_key);
+              m_model->get_my_id(), dst_id, sym_key);
           client.send(msg.to_bytes());
 
           // Receive and validate the server response
           ProtocolServerResponse server_msg = recv_protocol_response(client);
           if (server_msg.code() != RESPONSE_CODES::SEND_MESSAGE_REPLY) {
             throw std::runtime_error(
-                "Invalid server response after sending symmetric key. Code: " +
+                "Invalid server response after sending symmetric key. "
+                "Code: " +
                 std::to_string(server_msg.code()));
           }
 
@@ -208,7 +225,7 @@ void ClientController::run() {
         case ClientCommand::WaitingMessages: {
           // Send pending message request using protocol API
           auto msg = ProtocolMessage::create_pending_messages_request(
-              m_model->load_my_id());
+              m_model->get_my_id());
           client.send(msg.to_bytes());
           ProtocolServerResponse server_msg = recv_protocol_response(client);
 
@@ -222,7 +239,8 @@ void ClientController::run() {
           // Parse all messages from payload
           const auto& payload = server_msg.payload();
           size_t offset = 0;
-          // Each message has: [CLIENT_ID][MSG_ID][MSG_TYPE][MSG_SIZE][CONTENT]
+          // Each message has:
+          // [CLIENT_ID][MSG_ID][MSG_TYPE][MSG_SIZE][CONTENT]
           const size_t MSG_ID_SIZE = 4;    // uint32_t
           const size_t MSG_TYPE_SIZE = 1;  // uint8_t
           const size_t MSG_SIZE_SIZE = 4;  // uint32_t
@@ -302,23 +320,27 @@ void ClientController::run() {
 
             // Find sender name
             const ClientListEntry* sender = m_model->get_client_by_id(from_id);
+            if (!sender) {
+              m_view->show_error(
+                  "Sender ID not found in client list. Cannot display "
+                  "message.");
+              continue;  // Skip messages from unknown senders
+            }
             std::string sender_name = sender ? sender->name : "<unknown>";
             m_view->show_message("Sender: " + sender_name);
 
             // Check if we have a valid key for this client's messages
             bool has_key = false;
-            if (sender) {
-              // For TEXT messages, we need the symmetric key
-              if (msg_type ==
-                  static_cast<uint8_t>(ProtocolMessage::MessageType::TEXT)) {
-                // Use the model to check if we have a valid symmetric key
-                has_key = m_model->has_valid_symmetric_key();
-                m_view->show_message("Text message, has key: " +
-                                     std::string(has_key ? "yes" : "no"));
-              } else {
-                // For other message types, public key is sufficient
-                has_key = !sender->public_key.empty();
-              }
+            // For TEXT messages, we need the symmetric key
+            if (msg_type ==
+                static_cast<uint8_t>(ProtocolMessage::MessageType::TEXT)) {
+              // Use the model to check if we have a valid symmetric key
+              has_key = m_model->has_valid_symmetric_key_for_client(from_id);
+              m_view->show_message("Text message, has key: " +
+                                   std::string(has_key ? "yes" : "no"));
+            } else {
+              // For other message types, public key is sufficient
+              has_key = !sender->public_key.empty();
             }
 
             // Handle message based on type
@@ -331,12 +353,16 @@ void ClientController::run() {
                   std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> sym_key;
                   std::copy_n(content.begin(), ProtocolMessage::SYM_KEY_SIZE,
                               sym_key.begin());
-                  // Update the model with the received symmetric key
-                  m_model->set_symmetric_key(sym_key);
 
-                  // Update has_key status based on the model's status
-                  // This happens automatically now via set_symmetric_key
-                  has_key = m_model->has_valid_symmetric_key();
+                  // TODO: Decrypt the symmetric key using our private key
+
+                  // Store the symmetric key for this specific client
+                  m_model->set_symmetric_key_for_client(from_id, sym_key);
+
+                  // Update has_key status based on the model's per-client
+                  // status
+                  has_key =
+                      m_model->has_valid_symmetric_key_for_client(from_id);
                 } catch (const std::exception& e) {
                   m_view->show_error("Error processing symmetric key: " +
                                      std::string(e.what()));
@@ -360,8 +386,7 @@ void ClientController::run() {
                     "Received TEXT message with empty content. Skipping "
                     "display.");
               } else {
-                m_view->show_pending_message(sender_name, msg_type, content,
-                                             has_key);
+                m_view->show_pending_message(sender_name, msg_type, content);
               }
             } else {
               m_view->show_error(

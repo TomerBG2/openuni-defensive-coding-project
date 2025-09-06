@@ -35,9 +35,8 @@ class ProtocolMessage {
   std::vector<uint8_t> to_bytes() const;
   static ProtocolMessage from_bytes(const std::vector<uint8_t>& data);
 
-  static ProtocolMessage create_register_request(
-      const std::string& username,
-      const std::vector<uint8_t>& public_key);
+  static ProtocolMessage create_register_request(const std::string& username,
+                                                 const std::string& public_key);
   static ProtocolMessage create_list_clients_request(
       const std::array<uint8_t, UUID_SIZE>& client_id);
 
