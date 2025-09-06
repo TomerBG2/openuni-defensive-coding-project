@@ -139,7 +139,7 @@ ProtocolMessage ProtocolMessage::create_symmetric_key_request(
 ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
     const std::array<uint8_t, UUID_SIZE>& my_id,
     const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
-    const std::array<uint8_t, SYM_KEY_SIZE>& sym_key) {
+    const std::string& encrypted_sym_key) {
   ProtocolRequestHeader header{};
   header.client_id = my_id;
   header.version = 1;
@@ -151,12 +151,13 @@ ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
   // Append message type
   payload.push_back(static_cast<uint8_t>(MessageType::SYMMETRIC_KEY_SEND));
   // Append content size (4 bytes, network order)
-  uint32_t content_size = SYM_KEY_SIZE;
+  uint32_t content_size = encrypted_sym_key.size();
   uint32_t content_size_n = htonl(content_size);
   uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
   payload.insert(payload.end(), size_ptr, size_ptr + 4);
   // Append symmetric key content
-  payload.insert(payload.end(), sym_key.begin(), sym_key.end());
+  payload.insert(payload.end(), encrypted_sym_key.begin(),
+                 encrypted_sym_key.end());
 
   header.payload_size = payload.size();
   return ProtocolMessage(header, payload);

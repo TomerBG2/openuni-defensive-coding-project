@@ -23,59 +23,30 @@ std::unique_ptr<ClientModel> ClientModel::create_from_file(
 
 ClientModel::ClientModel(const std::string& ip, const std::string& port)
     : m_ip(ip), m_port(port), m_has_valid_key(false) {
-  // Initialize with a default key
-  AESWrapper::GenerateKey(
-      reinterpret_cast<unsigned int*>(m_symmetric_key.data()),
-      m_symmetric_key.size());
-      
-  // Create an AES wrapper with default constructor for safety
   m_aes_wrapper = std::make_unique<AESWrapper>();
+  m_private_key =
+      std::string(reinterpret_cast<const char*>(m_aes_wrapper->getKey()),
+                  AESWrapper::DEFAULT_KEYLENGTH);
 }
 
 ClientModel::~ClientModel() = default;
 
-// Rule of 5
-ClientModel::ClientModel(const ClientModel& other)
-    : m_ip(other.m_ip),
-      m_port(other.m_port),
-      m_client_list(other.m_client_list),
-      m_has_valid_key(other.m_has_valid_key),
-      m_private_key(other.m_private_key),
-      m_public_key(other.m_public_key),
-      m_symmetric_key(other.m_symmetric_key),
-      m_my_id(other.m_my_id) {
-  // Initialize the AES wrapper
-  m_aes_wrapper = std::make_unique<AESWrapper>();
-  
-  // Recreate RSA wrapper if needed
-  if (!other.m_private_key.empty()) {
-    m_rsa_private_wrapper = std::make_unique<RSAPrivateWrapper>(m_private_key);
-  }
-}
+// // Rule of 5
+// ClientModel::ClientModel(const ClientModel& other)
+//     : m_ip(other.m_ip),
+//       m_port(other.m_port),
+//       m_symmetric_key(other.m_symmetric_key),
+//       m_has_valid_key(other.m_has_valid_key) {}
 
-ClientModel& ClientModel::operator=(const ClientModel& other) {
-  if (this != &other) {
-    m_ip = other.m_ip;
-    m_port = other.m_port;
-    m_client_list = other.m_client_list;
-    m_has_valid_key = other.m_has_valid_key;
-    m_private_key = other.m_private_key;
-    m_public_key = other.m_public_key;
-    m_symmetric_key = other.m_symmetric_key;
-    m_my_id = other.m_my_id;
-    
-    // Recreate AES wrapper
-    m_aes_wrapper = std::make_unique<AESWrapper>();
-    
-    // Recreate RSA wrapper if needed
-    if (!other.m_private_key.empty()) {
-      m_rsa_private_wrapper = std::make_unique<RSAPrivateWrapper>(m_private_key);
-    } else {
-      m_rsa_private_wrapper.reset(); // Clear the pointer if no private key
-    }
-  }
-  return *this;
-}
+// ClientModel& ClientModel::operator=(const ClientModel& other) {
+//   if (this != &other) {
+//     m_ip = other.m_ip;
+//     m_port = other.m_port;
+//     m_symmetric_key = other.m_symmetric_key;
+//     m_has_valid_key = other.m_has_valid_key;
+//   }
+//   return *this;
+// }
 
 ClientModel::ClientModel(ClientModel&& other) noexcept = default;
 ClientModel& ClientModel::operator=(ClientModel&& other) noexcept = default;
@@ -113,12 +84,10 @@ void ClientModel::set_client_list(const std::vector<ClientListEntry>& list) {
   for (auto& new_entry : updated_list) {
     for (const auto& old_entry : m_client_list) {
       if (new_entry.id == old_entry.id) {
-        // If we had a symmetric key for this client, preserve it
-        if (old_entry.has_valid_symmetric_key) {
-          new_entry.symmetric_key = old_entry.symmetric_key;
-          new_entry.has_valid_symmetric_key = true;
-        }
-        break;
+        new_entry.symmetric_key = old_entry.symmetric_key;
+        new_entry.has_valid_symmetric_key = old_entry.has_valid_symmetric_key;
+        new_entry.public_key = old_entry.public_key;
+        new_entry.has_valid_public_key = old_entry.has_valid_public_key;
       }
     }
   }
@@ -136,6 +105,7 @@ void ClientModel::update_client_public_key(
   for (auto& entry : m_client_list) {
     if (entry.id == id) {
       entry.public_key = public_key;
+      entry.has_valid_public_key = true;
       break;
     }
   }

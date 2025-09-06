@@ -57,7 +57,7 @@ class ProtocolMessage {
   static ProtocolMessage create_send_sym_key_message_request(
       const std::array<uint8_t, UUID_SIZE>& my_id,
       const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
-      const std::array<uint8_t, SYM_KEY_SIZE>& sym_key);
+      const std::string& encrypted_sym_key);
 
   static ProtocolMessage create_pending_messages_request(
       const std::array<uint8_t, UUID_SIZE>& my_id);

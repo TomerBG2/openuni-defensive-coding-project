@@ -133,14 +133,12 @@ void ClientController::run() {
           std::vector<uint8_t> content(message_text.begin(),
                                        message_text.end());
 
-          // 1. Check if we have a symmetric key for this client
-          if (!m_model->has_valid_symmetric_key_for_client(dst_id)) {
+          if (!client_entry->has_valid_symmetric_key) {
             throw std::runtime_error(
                 "No valid symmetric key for this client. Please request a "
                 "symmetric key first.");
-            // 2. Get the symmetric key for this client
           }
-          std::string sym_key = m_model->get_symmetric_key_for_client(dst_id);
+          std::string sym_key = client_entry->symmetric_key;
           // 3. Create AES wrapper
           AESWrapper aes(
               reinterpret_cast<const unsigned char*>(sym_key.c_str()),
@@ -156,6 +154,9 @@ void ClientController::run() {
               m_model->get_my_id(), dst_id, ProtocolMessage::MessageType::TEXT,
               content);
           client.send(msg.to_bytes());
+
+          m_view->show_message("used symmetric key: ");
+          m_view->show_hexify(aes.getKey(), 16);
 
           // Receive and validate the server response
           ProtocolServerResponse server_msg = recv_protocol_response(client);
@@ -215,10 +216,10 @@ void ClientController::run() {
                 "client list first.");
             break;
           }
-          if (!client_entry->has_valid_symmetric_key) {
+          if (!client_entry->has_valid_public_key) {
             m_view->show_error(
-                "No valid symmetric key for this client. Please request a "
-                "symmetric key first.");
+                "No valid public key for this client. Please request a "
+                "public key first.");
             break;
           }
           const auto& dst_id = client_entry->id;
@@ -236,7 +237,7 @@ void ClientController::run() {
 
           // Build and send request using protocol API
           auto msg = ProtocolMessage::create_send_sym_key_message_request(
-              m_model->get_my_id(), dst_id, sym_key);
+              m_model->get_my_id(), dst_id, encrypted_key);
           client.send(msg.to_bytes());
 
           // Receive and validate the server response
@@ -377,30 +378,14 @@ void ClientController::run() {
             if (msg_type ==
                 static_cast<uint8_t>(
                     ProtocolMessage::MessageType::SYMMETRIC_KEY_SEND)) {
-              // Ensure we have valid content data
-              if (content.size() >= ProtocolMessage::SYM_KEY_SIZE) {
-                try {
-                  // Safely convert vector<uint8_t> to array<uint8_t, SYM_KEY_SIZE>
-                  std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> sym_key = {};
-                  // Only copy the exact amount needed
-                  std::copy_n(content.begin(), 
-                             std::min(content.size(), (size_t)ProtocolMessage::SYM_KEY_SIZE),
-                             sym_key.begin());
+              // std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> sym_key;
+              // std::copy_n(content.begin(), ProtocolMessage::SYM_KEY_SIZE,
+              //             sym_key.begin());
+              std::string encrypted_key(content.begin(), content.end());
 
-                  // Store the symmetric key for this specific client
-                  m_model->set_and_decrypt_symmetric_key_for_client(from_id,
-                                                                    sym_key);
-
-                  // Update has_key status based on the model's per-client
-                  // status
-                  // has_key =
-                  //     m_model->has_valid_symmetric_key_for_client(from_id);
-                } catch (const std::exception& e) {
-                  m_view->show_error("Error processing symmetric key: " +
-                                     std::string(e.what()));
-                  break;
-                }
-              }
+              // Store the symmetric key for this specific client
+              m_model->set_and_decrypt_symmetric_key_for_client(from_id,
+                                                                encrypted_key);
             }
 
             // Nothing to do here but display
@@ -409,10 +394,8 @@ void ClientController::run() {
                     ProtocolMessage::MessageType::SYMMETRIC_KEY_REQUEST)) {
             }
 
-            // Display message using view helper
             if (sender) {
-              // For TEXT messages, ensure content is not empty and decrypt if
-              // needed
+              // For TEXT messages, ensure content is not empty and decrypt
               if (msg_type ==
                   static_cast<uint8_t>(ProtocolMessage::MessageType::TEXT)) {
                 if (content.empty()) {
@@ -420,15 +403,23 @@ void ClientController::run() {
                       "Received TEXT message with empty content. Skipping "
                       "display.");
                 } else {
-                  std::string sym_key =
-                      m_model->get_symmetric_key_for_client(from_id);
-                  // Decrypt content
-                  AESWrapper aes(
-                      reinterpret_cast<const unsigned char*>(sym_key.c_str()),
-                      sym_key.size());
-                  std::string decrypted =
-                      aes.decrypt(reinterpret_cast<const char*>(content.data()),
-                                  content.size());
+                  // std::string sym_key =
+                  //     m_model->get_symmetric_key_for_client(from_id);
+                  // // Decrypt content
+                  // AESWrapper aes(
+                  //     reinterpret_cast<const unsigned
+                  //     char*>(sym_key.c_str()), sym_key.size());
+                  // std::string decrypted =
+                  //     aes.decrypt(reinterpret_cast<const
+                  //     char*>(content.data()),
+                  //                 content.size());
+
+                  m_view->show_message("My symmetric key: ");
+                  m_view->show_hexify(m_model->m_aes_wrapper->getKey(), 16);
+                  // incoming messages should be decrypted by my symmetric key
+                  std::string decrypted = m_model->m_aes_wrapper->decrypt(
+                      reinterpret_cast<const char*>(content.data()),
+                      content.size());
                   m_view->show_pending_message(sender_name, msg_type,
                                                decrypted);
                 }
