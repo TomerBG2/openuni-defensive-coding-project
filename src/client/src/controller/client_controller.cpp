@@ -333,8 +333,6 @@ void ClientController::run() {
                               sym_key.begin());
                   // Update the model with the received symmetric key
                   m_model->set_symmetric_key(sym_key);
-                  // Also update client's key storage for backward compatibility
-                  m_model->update_client_public_key(from_id, content);
 
                   // Update has_key status based on the model's status
                   // This happens automatically now via set_symmetric_key
@@ -344,6 +342,12 @@ void ClientController::run() {
                                      std::string(e.what()));
                 }
               }
+            }
+
+            // Nothing to do here but display
+            if (msg_type ==
+                static_cast<uint8_t>(
+                    ProtocolMessage::MessageType::SYMMETRIC_KEY_REQUEST)) {
             }
 
             // Display message using view helper
