@@ -90,10 +90,9 @@ void ClientView::show_all_clients(
   }
 }
 
-void ClientView::show_pending_message(
-    const std::string& sender_name,
-    uint8_t msg_type,
-    const std::vector<uint8_t>& content) const {
+void ClientView::show_pending_message(const std::string& sender_name,
+                                      uint8_t msg_type,
+                                      const std::string& content) const {
   std::cout << "From: " << sender_name << std::endl;
   std::cout << "Content:" << std::endl;
   switch (static_cast<ProtocolMessage::MessageType>(msg_type)) {
@@ -104,8 +103,7 @@ void ClientView::show_pending_message(
       std::cout << "Received symmetric key" << std::endl;
       break;
     case ProtocolMessage::MessageType::TEXT: {
-      std::string text(content.begin(), content.end());
-      std::cout << text << std::endl;
+      std::cout << content << std::endl;
       break;
     }
     default:

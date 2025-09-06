@@ -22,7 +22,15 @@ std::unique_ptr<ClientModel> ClientModel::create_from_file(
 }
 
 ClientModel::ClientModel(const std::string& ip, const std::string& port)
-    : m_ip(ip), m_port(port), m_symmetric_key{}, m_has_valid_key(false) {}
+    : m_ip(ip), m_port(port), m_has_valid_key(false) {
+  // Initialize with a default key
+  AESWrapper::GenerateKey(
+      reinterpret_cast<unsigned int*>(m_symmetric_key.data()),
+      m_symmetric_key.size());
+      
+  // Create an AES wrapper with default constructor for safety
+  m_aes_wrapper = std::make_unique<AESWrapper>();
+}
 
 ClientModel::~ClientModel() = default;
 
@@ -30,15 +38,41 @@ ClientModel::~ClientModel() = default;
 ClientModel::ClientModel(const ClientModel& other)
     : m_ip(other.m_ip),
       m_port(other.m_port),
+      m_client_list(other.m_client_list),
+      m_has_valid_key(other.m_has_valid_key),
+      m_private_key(other.m_private_key),
+      m_public_key(other.m_public_key),
       m_symmetric_key(other.m_symmetric_key),
-      m_has_valid_key(other.m_has_valid_key) {}
+      m_my_id(other.m_my_id) {
+  // Initialize the AES wrapper
+  m_aes_wrapper = std::make_unique<AESWrapper>();
+  
+  // Recreate RSA wrapper if needed
+  if (!other.m_private_key.empty()) {
+    m_rsa_private_wrapper = std::make_unique<RSAPrivateWrapper>(m_private_key);
+  }
+}
 
 ClientModel& ClientModel::operator=(const ClientModel& other) {
   if (this != &other) {
     m_ip = other.m_ip;
     m_port = other.m_port;
-    m_symmetric_key = other.m_symmetric_key;
+    m_client_list = other.m_client_list;
     m_has_valid_key = other.m_has_valid_key;
+    m_private_key = other.m_private_key;
+    m_public_key = other.m_public_key;
+    m_symmetric_key = other.m_symmetric_key;
+    m_my_id = other.m_my_id;
+    
+    // Recreate AES wrapper
+    m_aes_wrapper = std::make_unique<AESWrapper>();
+    
+    // Recreate RSA wrapper if needed
+    if (!other.m_private_key.empty()) {
+      m_rsa_private_wrapper = std::make_unique<RSAPrivateWrapper>(m_private_key);
+    } else {
+      m_rsa_private_wrapper.reset(); // Clear the pointer if no private key
+    }
   }
   return *this;
 }

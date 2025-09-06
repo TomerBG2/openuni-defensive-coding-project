@@ -67,12 +67,11 @@ class ClientModel {
     if (client && client->has_valid_symmetric_key) {
       return client->symmetric_key;
     }
-    // Return empty string if no key found
-    return std::string();
+    throw std::runtime_error("No valid symmetric key for this client");
   }
 
   // Set a symmetric key for a specific client
-  void set_symmetric_key_for_client(
+  void set_and_decrypt_symmetric_key_for_client(
       const std::array<uint8_t, sizeof(ProtocolRequestHeader::client_id)>&
           client_id,
       const std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE>& key) {
@@ -96,18 +95,12 @@ class ClientModel {
     return client && client->has_valid_symmetric_key;
   }
 
-  // Legacy methods for backward compatibility
+  // TODO:  all legacy stuff must go! do it my self not AI
+  // TODO: we dont really use our symetric key correctly we should genrate at
+  // start near the load call Legacy methods for backward compatibility
   std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> get_symmetric_key() const {
     return m_symmetric_key;
   }
-
-  void set_symmetric_key(
-      const std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE>& key) {
-    m_symmetric_key = key;
-    m_has_valid_key = true;
-  }
-
-  bool has_valid_symmetric_key() const { return m_has_valid_key; }
 
   void generate_key_pair();
 
@@ -121,10 +114,12 @@ class ClientModel {
   std::string m_ip;
   std::string m_port;
   std::vector<ClientListEntry> m_client_list;
-  std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> m_symmetric_key{};
   bool m_has_valid_key = false;
   std::string m_private_key;  // Stored in string format
   std::unique_ptr<RSAPrivateWrapper> m_rsa_private_wrapper;
   std::string m_public_key;
+  std::array<uint8_t, ProtocolMessage::SYM_KEY_SIZE> m_symmetric_key{};
+  std::unique_ptr<AESWrapper> m_aes_wrapper;
+
   std::array<uint8_t, 16> m_my_id{};
 };
