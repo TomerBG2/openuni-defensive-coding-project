@@ -46,4 +46,8 @@ class ServerModel:
 
     def get_messages_for(self, client_id: bytes):
         with self.lock:
-            return [m for m in self.messages if m.to_client == client_id]
+            msgs_clone = [
+                m for m in self.messages if m.to_client == client_id]
+            for m in msgs_clone:
+                self.messages.remove(m)
+            return msgs_clone

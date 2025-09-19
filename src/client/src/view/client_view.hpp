@@ -27,6 +27,5 @@ class ClientView {
   void show_all_clients(const std::vector<ClientListEntry>& clients) const;
   void show_pending_message(const std::string& sender_name,
                             uint8_t msg_type,
-                            const std::vector<uint8_t>& content,
-                            bool has_key) const;
+                            const std::string& content) const;
 };

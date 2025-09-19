@@ -35,9 +35,8 @@ class ProtocolMessage {
   std::vector<uint8_t> to_bytes() const;
   static ProtocolMessage from_bytes(const std::vector<uint8_t>& data);
 
-  static ProtocolMessage create_register_request(
-      const std::string& username,
-      const std::vector<uint8_t>& public_key);
+  static ProtocolMessage create_register_request(const std::string& username,
+                                                 const std::string& public_key);
   static ProtocolMessage create_list_clients_request(
       const std::array<uint8_t, UUID_SIZE>& client_id);
 
@@ -58,7 +57,7 @@ class ProtocolMessage {
   static ProtocolMessage create_send_sym_key_message_request(
       const std::array<uint8_t, UUID_SIZE>& my_id,
       const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
-      const std::array<uint8_t, SYM_KEY_SIZE>& sym_key);
+      const std::string& encrypted_sym_key);
 
   static ProtocolMessage create_pending_messages_request(
       const std::array<uint8_t, UUID_SIZE>& my_id);

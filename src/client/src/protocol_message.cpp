@@ -36,7 +36,7 @@ ProtocolMessage ProtocolMessage::from_bytes(const std::vector<uint8_t>& data) {
 // Helper for register request
 ProtocolMessage ProtocolMessage::create_register_request(
     const std::string& username,
-    const std::vector<uint8_t>& public_key) {
+    const std::string& public_key) {
   ProtocolRequestHeader header{};
   header.client_id.fill(0);  // UUID_SIZE bytes of 0 for registration
   header.version = 1;
@@ -47,10 +47,15 @@ ProtocolMessage ProtocolMessage::create_register_request(
   std::memcpy(
       payload.data(), username.c_str(),
       std::min<size_t>(username.size(), ProtocolMessage::CLIENT_NAME_SIZE));
-  if (public_key.size() >= ProtocolMessage::PUBLIC_KEY_SIZE) {
-    std::memcpy(payload.data() + ProtocolMessage::CLIENT_NAME_SIZE,
-                public_key.data(), ProtocolMessage::PUBLIC_KEY_SIZE);
+  if (public_key.size() != ProtocolMessage::PUBLIC_KEY_SIZE) {
+    throw std::runtime_error("Public key must be exactly " +
+                             std::to_string(ProtocolMessage::PUBLIC_KEY_SIZE) +
+                             " bytes");
   }
+
+  std::memcpy(payload.data() + ProtocolMessage::CLIENT_NAME_SIZE,
+              public_key.data(), ProtocolMessage::PUBLIC_KEY_SIZE);
+
   // else leave as zeros
 
   header.payload_size = payload.size();
@@ -134,7 +139,7 @@ ProtocolMessage ProtocolMessage::create_symmetric_key_request(
 ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
     const std::array<uint8_t, UUID_SIZE>& my_id,
     const std::array<uint8_t, CLIENT_ID_SIZE>& dst_id,
-    const std::array<uint8_t, SYM_KEY_SIZE>& sym_key) {
+    const std::string& encrypted_sym_key) {
   ProtocolRequestHeader header{};
   header.client_id = my_id;
   header.version = 1;
@@ -146,12 +151,13 @@ ProtocolMessage ProtocolMessage::create_send_sym_key_message_request(
   // Append message type
   payload.push_back(static_cast<uint8_t>(MessageType::SYMMETRIC_KEY_SEND));
   // Append content size (4 bytes, network order)
-  uint32_t content_size = SYM_KEY_SIZE;
+  uint32_t content_size = encrypted_sym_key.size();
   uint32_t content_size_n = htonl(content_size);
   uint8_t* size_ptr = reinterpret_cast<uint8_t*>(&content_size_n);
   payload.insert(payload.end(), size_ptr, size_ptr + 4);
   // Append symmetric key content
-  payload.insert(payload.end(), sym_key.begin(), sym_key.end());
+  payload.insert(payload.end(), encrypted_sym_key.begin(),
+                 encrypted_sym_key.end());
 
   header.payload_size = payload.size();
   return ProtocolMessage(header, payload);
