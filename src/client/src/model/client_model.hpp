@@ -35,7 +35,7 @@ class ClientModel {
   void save_me_info(
       const std::string& username,
       const std::array<uint8_t, ProtocolMessage::CLIENT_ID_SIZE>& uuid,
-      const std::string& private_key_base64);
+      std::string private_key_base64);
   void load_my_info();
 
   const std::string& get_ip() const { return m_ip; }

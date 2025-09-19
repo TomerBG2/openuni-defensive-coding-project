@@ -64,9 +64,6 @@ void ClientController::run() {
         }
         case ClientCommand::ListClients: {
           // Build and send request using protocol API
-          m_view->show_message("sending get client with: ");
-          m_view->show_hexify(m_model->get_my_id().data(),
-                              m_model->get_my_id().size());
           auto msg = ProtocolMessage::create_list_clients_request(
               m_model->get_my_id());
           client.send(msg.to_bytes());
@@ -79,7 +76,6 @@ void ClientController::run() {
           }
           auto client_list = server_msg.parse_client_list();
           m_model->set_client_list(client_list);
-          m_view->show_message("Client list received and saved.");
           m_view->show_all_clients(client_list);
           break;
         }
@@ -149,9 +145,6 @@ void ClientController::run() {
               m_model->get_my_id(), dst_id, ProtocolMessage::MessageType::TEXT,
               content);
           client.send(msg.to_bytes());
-
-          m_view->show_message("used symmetric key: ");
-          m_view->show_hexify(aes.getKey(), 16);
 
           // Receive and validate the server response
           ProtocolServerResponse server_msg = recv_protocol_response(client);
@@ -274,18 +267,7 @@ void ClientController::run() {
                                          MSG_ID_SIZE + MSG_TYPE_SIZE +
                                          MSG_SIZE_SIZE;
 
-          // Log total payload size for debugging
-          m_view->show_message(
-              "Received payload of " + std::to_string(payload.size()) +
-              " bytes with " +
-              std::to_string(payload.size() / MSG_HEADER_SIZE) +
-              " potential messages");
-
           while (offset + MSG_HEADER_SIZE <= payload.size()) {
-            // Log current offset for debugging
-            m_view->show_message("Processing message at offset " +
-                                 std::to_string(offset));
-
             // Parse header
             std::array<uint8_t, ProtocolMessage::CLIENT_ID_SIZE> from_id;
             std::memcpy(from_id.data(), payload.data() + offset,
@@ -296,8 +278,7 @@ void ClientController::run() {
                 *reinterpret_cast<const uint32_t*>(payload.data() + offset));
             offset += MSG_ID_SIZE;
 
-            uint8_t msg_type = payload[offset++];  // Already only 1 byte
-            m_view->show_message("Message type: " + std::to_string(msg_type));
+            uint8_t msg_type = payload[offset++];
 
             // Validate message type before proceeding
             if (msg_type < 1 || msg_type > 3) {
@@ -318,11 +299,6 @@ void ClientController::run() {
             std::memcpy(&msg_size, payload.data() + offset, MSG_SIZE_SIZE);
             msg_size = ntohl(msg_size);
             offset += MSG_SIZE_SIZE;
-
-            m_view->show_message(
-                "Message size: " + std::to_string(msg_size) +
-                " bytes (offset: " + std::to_string(offset) +
-                ", payload size: " + std::to_string(payload.size()) + ")");
 
             // Validate message size
             if (offset + msg_size > payload.size()) {
@@ -353,21 +329,6 @@ void ClientController::run() {
               continue;  // Skip messages from unknown senders
             }
             std::string sender_name = sender ? sender->name : "<unknown>";
-            m_view->show_message("Sender: " + sender_name);
-
-            // // Check if we have a valid key for this client's messages
-            // bool has_key = false;
-            // // For TEXT messages, we need the symmetric key
-            // if (msg_type ==
-            //     static_cast<uint8_t>(ProtocolMessage::MessageType::TEXT)) {
-            //   // Use the model to check if we have a valid symmetric key
-            //   has_key = m_model->has_valid_symmetric_key_for_client(from_id);
-            //   m_view->show_message("Text message, has key: " +
-            //                        std::string(has_key ? "yes" : "no"));
-            // } else {
-            //   // For other message types, public key is sufficient
-            //   has_key = !sender->public_key.empty();
-            // }
 
             // Handle message based on type
             if (msg_type ==

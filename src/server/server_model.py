@@ -1,6 +1,8 @@
 import threading
 import time
 
+DEFAULT_PORT = 1357
+
 
 class Client:
     def __init__(self, client_id: bytes, username: str, public_key: bytes):
@@ -51,3 +53,20 @@ class ServerModel:
             for m in msgs_clone:
                 self.messages.remove(m)
             return msgs_clone
+
+    @staticmethod
+    def get_port_from_file():
+        try:
+            with open("myport.info") as f:
+                port_str = f.read().strip()
+                port = int(port_str)
+                if 1024 <= port <= 65535:
+                    return port
+                else:
+                    print(
+                        f"Port number {port} in myport.info is out of valid range (1024-65535). Using default port {DEFAULT_PORT}.")
+                    return DEFAULT_PORT
+        except Exception as e:
+            print(
+                f"Error reading port from myport.info: {e}. Using default port {DEFAULT_PORT}.")
+            return DEFAULT_PORT

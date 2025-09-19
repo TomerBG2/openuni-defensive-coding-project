@@ -5,7 +5,6 @@ from server_view import ServerView
 from server_controller import ServerController
 
 HOST = '0.0.0.0'
-PORT = 12345
 
 
 def main():
@@ -13,11 +12,13 @@ def main():
     view = ServerView()
     controller = ServerController(model, view)
 
+    port = model.get_port_from_file()
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        s.bind((HOST, PORT))
+        s.bind((HOST, port))
         s.listen()
-        view.log(f"Server listening on {HOST}:{PORT}")
+        view.log(f"Server listening on {HOST}:{port}")
         while True:
             conn, addr = s.accept()
             threading.Thread(target=controller.handle_client,

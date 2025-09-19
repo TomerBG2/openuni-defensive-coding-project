@@ -39,7 +39,13 @@ bool ClientModel::me_info_exists() const {
 void ClientModel::save_me_info(
     const std::string& username,
     const std::array<uint8_t, ProtocolMessage::CLIENT_ID_SIZE>& uuid,
-    const std::string& private_key_base64) {
+    std::string private_key_base64) {
+  private_key_base64.erase(
+      std::remove(private_key_base64.begin(), private_key_base64.end(), '\n'),
+      private_key_base64.end());
+  private_key_base64.erase(
+      std::remove(private_key_base64.begin(), private_key_base64.end(), '\r'),
+      private_key_base64.end());  // For Windows-style newlines
   std::ofstream out("me.info");
   if (!out) {
     throw std::runtime_error("Failed to write me.info.");
