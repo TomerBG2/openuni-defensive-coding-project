@@ -1,62 +1,28 @@
-# TCP Client Application
+# Secure MessageU TCP Client Architecture
 
-This project implements a simple TCP client using the Boost library with C++17. The client connects to a specified server, sends messages, and receives responses asynchronously.
+This client implements a secure messaging protocol for a university course, using C++17 and Boost.Asio. The design follows the Model-View-Controller (MVC) pattern and strictly encapsulates all protocol logic.
 
-## Project Structure
+## Key Architecture
 
-```
-client
-├── src
-│   ├── main.cpp          # Entry point of the application
-│   ├── tcp_client.cpp    # Implementation of the TCP client class
-│   └── tcp_client.hpp    # Declaration of the TCP client class
-├── CMakeLists.txt        # CMake configuration file
-└── README.md             # Project documentation
-```
+- **MVC Pattern:**  
+  - **Controller:** Orchestrates user commands and delegates all protocol logic.  
+    - `controller/client_controller.cpp`
+  - **Model:** Stores client-side state (e.g., user info, session data).  
+    - `model/`
+  - **View:** Handles all user I/O (CLI, prompts, output).  
+    - `view/`
 
-## Requirements
+- **Protocol Encapsulation:**  
+  - **Request Creation:**  
+    - All protocol requests are built using static methods in `protocol_message.hpp/cpp`.  
+    - Controllers never construct protocol structs manually.
+  - **Response Parsing:**  
+    - All protocol responses are parsed and validated using methods in `protocol_server_response.hpp/cpp`.  
+    - Controllers do not parse headers or payloads directly.
 
-- C++17
-- Boost ASIO library
+- **Networking:**  
+  - Uses Boost.Asio for TCP communication, abstracted in `tcp_client.hpp/cpp`.
 
-## Building the Project
-
-1. Ensure you have CMake and Boost installed on your system.
-2. Navigate to the project directory:
-
-   ```bash
-   cd /home/tomer/dev/uni_course/tmd/15/src/client
-   ```
-
-3. Create a build directory and navigate into it:
-
-   ```bash
-   mkdir build
-   cd build
-   ```
-
-4. Run CMake to configure the project:
-
-   ```bash
-   cmake ..
-   ```
-
-5. Build the project:
-
-   ```bash
-   make
-   ```
-
-## Running the TCP Client
-
-After building the project, you can run the TCP client executable. Make sure to specify the server address and port as needed.
-
-```bash
-./tcp_client <server_address> <port>
-```
-
-Replace `<server_address>` and `<port>` with the appropriate values for your server. 
-
-## License
-
-This project is licensed under the MIT License.
+- **Binary Protocol:**  
+  - All communication uses packed structs and binary data.  
+  - Protocol sizes and codes are always derived from enums or `sizeof`, never hardcoded.
