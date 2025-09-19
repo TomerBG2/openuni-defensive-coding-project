@@ -87,8 +87,6 @@ class ClientModel {
     }
     client->symmetric_key = m_rsa_private_wrapper->decrypt(encrypted_key);
     client->has_valid_symmetric_key = true;
-    std::cout << "Symmetric key set for client "
-              << std::string(client_id.begin(), client_id.end()) << "\n";
   }
 
   // Check if we have a valid symmetric key for a client
@@ -99,9 +97,6 @@ class ClientModel {
     return client && client->has_valid_symmetric_key;
   }
 
-  // TODO:  all legacy stuff must go! do it my self not AI
-  // TODO: we dont really use our symetric key correctly we should genrate at
-  // start near the load call Legacy methods for backward compatibility
   std::string get_symmetric_key() const {
     return std::string(reinterpret_cast<const char*>(m_aes_wrapper->getKey()),
                        16);
@@ -115,7 +110,9 @@ class ClientModel {
     m_my_id = uuid;
   }
 
-  std::unique_ptr<AESWrapper> m_aes_wrapper;
+  std::string decrypt_with_aes(const char* cipher, unsigned int length) {
+    return m_aes_wrapper->decrypt(cipher, length);
+  }
 
  private:
   std::string m_ip;
@@ -123,6 +120,7 @@ class ClientModel {
   std::vector<ClientListEntry> m_client_list;
   bool m_has_valid_key = false;
   std::string m_private_key;  // Stored in string format
+  std::unique_ptr<AESWrapper> m_aes_wrapper;
   std::unique_ptr<RSAPrivateWrapper> m_rsa_private_wrapper;
   std::string m_public_key;
 

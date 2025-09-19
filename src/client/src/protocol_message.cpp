@@ -54,7 +54,7 @@ ProtocolMessage ProtocolMessage::create_register_request(
   }
 
   std::memcpy(payload.data() + ProtocolMessage::CLIENT_NAME_SIZE,
-              public_key.c_str(), ProtocolMessage::PUBLIC_KEY_SIZE);
+              public_key.data(), ProtocolMessage::PUBLIC_KEY_SIZE);
 
   // else leave as zeros
 

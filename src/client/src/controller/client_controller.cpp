@@ -103,11 +103,6 @@ void ClientController::run() {
 
           std::vector<uint8_t> pubkey =
               server_msg.parse_public_key_reply(req_id);
-          // Show client ID as hex
-          m_view->show_message("Client ID:");
-          m_view->show_hexify(req_id.data(), req_id.size());
-          m_view->show_message("Public key (first 16 bytes): ");
-          m_view->show_hexify(pubkey.data(), 16);
           m_model->update_client_public_key(req_id, pubkey);
 
           break;
@@ -403,21 +398,8 @@ void ClientController::run() {
                       "Received TEXT message with empty content. Skipping "
                       "display.");
                 } else {
-                  // std::string sym_key =
-                  //     m_model->get_symmetric_key_for_client(from_id);
-                  // // Decrypt content
-                  // AESWrapper aes(
-                  //     reinterpret_cast<const unsigned
-                  //     char*>(sym_key.c_str()), sym_key.size());
-                  // std::string decrypted =
-                  //     aes.decrypt(reinterpret_cast<const
-                  //     char*>(content.data()),
-                  //                 content.size());
-
-                  m_view->show_message("My symmetric key: ");
-                  m_view->show_hexify(m_model->m_aes_wrapper->getKey(), 16);
                   // incoming messages should be decrypted by my symmetric key
-                  std::string decrypted = m_model->m_aes_wrapper->decrypt(
+                  std::string decrypted = m_model->decrypt_with_aes(
                       reinterpret_cast<const char*>(content.data()),
                       content.size());
                   m_view->show_pending_message(sender_name, msg_type,
